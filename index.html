@@ -1,0 +1,958 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StudyHub - Smart Notes Organizer</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        .app-container {
+            max-width: 100%;
+            min-height: 100vh;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+        }
+
+        .glass-effect {
+            background: rgba(255, 255, 255, 0.25);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+        }
+
+        .card {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: white;
+            box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.1);
+            z-index: 1000;
+        }
+
+        .nav-item {
+            transition: all 0.3s ease;
+        }
+
+        .nav-item.active {
+            color: #667eea;
+            transform: scale(1.1);
+        }
+
+        .zoom-container {
+            position: relative;
+            overflow: hidden;
+            cursor: grab;
+        }
+
+        .zoom-container:active {
+            cursor: grabbing;
+        }
+
+        .zoom-image {
+            transition: transform 0.3s ease;
+            max-width: 100%;
+            height: auto;
+        }
+
+        .fullscreen-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.95);
+            z-index: 2000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .fullscreen-content {
+            position: relative;
+            max-width: 90%;
+            max-height: 90%;
+        }
+
+        .zoom-controls {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 10px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 10px;
+            border-radius: 25px;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        .note-thumbnail {
+            width: 100%;
+            height: 200px;
+            object-fit: cover;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: transform 0.3s ease;
+        }
+
+        .note-thumbnail:hover {
+            transform: scale(1.05);
+        }
+
+        .upload-area {
+            border: 2px dashed #667eea;
+            border-radius: 12px;
+            padding: 2rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: rgba(102, 126, 234, 0.05);
+        }
+
+        .upload-area:hover {
+            border-color: #4f46e5;
+            background: rgba(102, 126, 234, 0.1);
+        }
+
+        .upload-area.dragover {
+            border-color: #4f46e5;
+            background: rgba(102, 126, 234, 0.15);
+            transform: scale(1.02);
+        }
+
+        .stats-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 16px;
+            padding: 1.5rem;
+            text-align: center;
+            transition: transform 0.3s ease;
+        }
+
+        .stats-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .subject-filter {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+            margin-bottom: 1rem;
+        }
+
+        .filter-btn {
+            padding: 0.5rem 1rem;
+            background: #f3f4f6;
+            border: none;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .filter-btn.active {
+            background: #667eea;
+            color: white;
+        }
+
+        @media (max-width: 768px) {
+            .app-container {
+                padding-bottom: 80px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Login Screen -->
+        <div id="loginScreen" class="min-h-screen flex items-center justify-center p-4">
+            <div class="card p-8 w-full max-w-md">
+                <div class="text-center mb-8">
+                    <i class="fas fa-graduation-cap text-5xl text-blue-600 mb-4"></i>
+                    <h1 class="text-3xl font-bold text-gray-800">StudyHub</h1>
+                    <p class="text-gray-600">Smart Notes Organizer</p>
+                </div>
+                
+                <div id="loginForm">
+                    <h2 class="text-2xl font-bold mb-6 text-center">Welcome Back</h2>
+                    <form onsubmit="handleLogin(event)">
+                        <div class="mb-4">
+                            <label class="block text-gray-700 text-sm font-bold mb-2">Email</label>
+                            <input type="email" id="loginEmail" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500" required>
+                        </div>
+                        <div class="mb-6">
+                            <label class="block text-gray-700 text-sm font-bold mb-2">Password</label>
+                            <input type="password" id="loginPassword" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500" required>
+                        </div>
+                        <button type="submit" class="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition duration-300">Sign In</button>
+                    </form>
+                    <p class="text-center mt-4">
+                        Don't have an account? 
+                        <button onclick="showSignup()" class="text-blue-600 hover:underline">Sign Up</button>
+                    </p>
+                </div>
+
+                <div id="signupForm" class="hidden">
+                    <h2 class="text-2xl font-bold mb-6 text-center">Create Account</h2>
+                    <form onsubmit="handleSignup(event)">
+                        <div class="mb-4">
+                            <label class="block text-gray-700 text-sm font-bold mb-2">Full Name</label>
+                            <input type="text" id="signupName" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500" required>
+                        </div>
+                        <div class="mb-4">
+                            <label class="block text-gray-700 text-sm font-bold mb-2">Email</label>
+                            <input type="email" id="signupEmail" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500" required>
+                        </div>
+                        <div class="mb-6">
+                            <label class="block text-gray-700 text-sm font-bold mb-2">Password</label>
+                            <input type="password" id="signupPassword" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500" required>
+                        </div>
+                        <button type="submit" class="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition duration-300">Create Account</button>
+                    </form>
+                    <p class="text-center mt-4">
+                        Already have an account? 
+                        <button onclick="showLogin()" class="text-blue-600 hover:underline">Sign In</button>
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main App -->
+        <div id="mainApp" class="hidden">
+            <!-- Header -->
+            <header class="bg-white shadow-sm p-4">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center">
+                        <i class="fas fa-graduation-cap text-2xl text-blue-600 mr-2"></i>
+                        <h1 class="text-xl font-bold text-gray-800">StudyHub</h1>
+                    </div>
+                    <div class="flex items-center space-x-4">
+                        <div class="relative">
+                            <input type="text" id="searchInput" placeholder="Search notes..." class="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 w-64">
+                            <i class="fas fa-search absolute left-3 top-3 text-gray-400"></i>
+                        </div>
+                        <button onclick="logout()" class="text-gray-600 hover:text-gray-800">
+                            <i class="fas fa-sign-out-alt text-xl"></i>
+                        </button>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Dashboard Content -->
+            <div id="dashboardSection" class="p-6">
+                <!-- Upload Section -->
+                <div class="mb-8">
+                    <h2 class="text-2xl font-bold mb-4">Upload Notes</h2>
+                    <div class="upload-area" onclick="document.getElementById('fileInput').click()">
+                        <i class="fas fa-cloud-upload-alt text-4xl text-blue-600 mb-4"></i>
+                        <p class="text-lg font-medium">Drop files here or click to upload</p>
+                        <p class="text-gray-600">Supports images, PDFs, and documents</p>
+                        <input type="file" id="fileInput" class="hidden" multiple accept="image/*,.pdf,.doc,.docx" onchange="handleFileUpload(event)">
+                    </div>
+                </div>
+
+                <!-- Statistics -->
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+                    <div class="stats-card">
+                        <i class="fas fa-file-alt text-3xl mb-2"></i>
+                        <h3 class="text-2xl font-bold" id="totalNotesCount">0</h3>
+                        <p>Total Notes</p>
+                    </div>
+                    <div class="stats-card">
+                        <i class="fas fa-book text-3xl mb-2"></i>
+                        <h3 class="text-2xl font-bold" id="totalSubjectsCount">0</h3>
+                        <p>Total Subjects</p>
+                    </div>
+                    <div class="stats-card">
+                        <i class="fas fa-calendar-check text-3xl mb-2"></i>
+                        <h3 class="text-2xl font-bold" id="daysActive">1</h3>
+                        <p>Days Active</p>
+                    </div>
+                    <div class="stats-card">
+                        <i class="fas fa-crown text-3xl mb-2"></i>
+                        <h3 class="text-lg font-bold">Free</h3>
+                        <p>Premium</p>
+                    </div>
+                </div>
+
+                <!-- About Section -->
+                <div class="card p-6 mb-8">
+                    <h2 class="text-2xl font-bold mb-4">About StudyHub</h2>
+                    <p class="text-gray-700 mb-4">
+                        StudyHub is your ultimate digital companion for organizing and managing study materials. 
+                        Our platform helps students streamline their learning process with intelligent note organization, 
+                        subject-based categorization, and powerful study tools.
+                    </p>
+                    <div class="grid md:grid-cols-3 gap-4">
+                        <div class="text-center">
+                            <i class="fas fa-folder-open text-3xl text-blue-600 mb-2"></i>
+                            <h3 class="font-bold">Smart Organization</h3>
+                            <p class="text-sm text-gray-600">Automatically organize notes by subjects and dates</p>
+                        </div>
+                        <div class="text-center">
+                            <i class="fas fa-search-plus text-3xl text-blue-600 mb-2"></i>
+                            <h3 class="font-bold">Advanced Search</h3>
+                            <p class="text-sm text-gray-600">Quickly find any note with powerful search capabilities</p>
+                        </div>
+                        <div class="text-center">
+                            <i class="fas fa-tasks text-3xl text-blue-600 mb-2"></i>
+                            <h3 class="font-bold">Task Management</h3>
+                            <p class="text-sm text-gray-600">Track your study progress with integrated task manager</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Notes Section -->
+            <div id="notesSection" class="hidden p-6">
+                <h2 class="text-2xl font-bold mb-4">My Notes</h2>
+                <div class="subject-filter mb-6">
+                    <button class="filter-btn active" onclick="filterNotes('all')">All</button>
+                </div>
+                <div id="notesGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <!-- Notes will be dynamically added here -->
+                </div>
+            </div>
+
+            <!-- Gallery Section -->
+            <div id="gallerySection" class="hidden p-6">
+                <h2 class="text-2xl font-bold mb-4">Gallery View</h2>
+                <div id="galleryGrid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                    <!-- Gallery items will be dynamically added here -->
+                </div>
+            </div>
+
+            <!-- Book View Section -->
+            <div id="bookViewSection" class="hidden p-6">
+                <h2 class="text-2xl font-bold mb-4">Book View</h2>
+                <div class="mb-4">
+                    <select id="subjectSelect" class="px-4 py-2 border border-gray-300 rounded-lg" onchange="loadBookView()">
+                        <option value="">Select Subject</option>
+                    </select>
+                </div>
+                <div id="bookViewContainer" class="text-center">
+                    <p class="text-gray-600">Select a subject to view notes in book format</p>
+                </div>
+            </div>
+
+            <!-- Tasks Section -->
+            <div id="tasksSection" class="hidden p-6">
+                <h2 class="text-2xl font-bold mb-4">Task Manager</h2>
+                <div class="card p-6 mb-6">
+                    <h3 class="text-lg font-bold mb-4">Add New Task</h3>
+                    <div class="flex gap-4">
+                        <input type="text" id="taskInput" placeholder="Enter task..." class="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500">
+                        <button onclick="addTask()" class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700">Add</button>
+                    </div>
+                </div>
+                <div id="tasksList" class="space-y-2">
+                    <!-- Tasks will be dynamically added here -->
+                </div>
+            </div>
+
+            <!-- Bottom Navigation -->
+            <nav class="bottom-nav">
+                <div class="flex justify-around py-3">
+                    <button class="nav-item active text-center" onclick="showSection('dashboard')">
+                        <i class="fas fa-home text-xl block"></i>
+                        <span class="text-xs">Dashboard</span>
+                    </button>
+                    <button class="nav-item text-center" onclick="showSection('notes')">
+                        <i class="fas fa-sticky-note text-xl block"></i>
+                        <span class="text-xs">Notes</span>
+                    </button>
+                    <button class="nav-item text-center" onclick="showSection('gallery')">
+                        <i class="fas fa-images text-xl block"></i>
+                        <span class="text-xs">Gallery</span>
+                    </button>
+                    <button class="nav-item text-center" onclick="showSection('bookView')">
+                        <i class="fas fa-book-open text-xl block"></i>
+                        <span class="text-xs">Book View</span>
+                    </button>
+                    <button class="nav-item text-center" onclick="showSection('tasks')">
+                        <i class="fas fa-tasks text-xl block"></i>
+                        <span class="text-xs">Tasks</span>
+                    </button>
+                </div>
+            </nav>
+        </div>
+
+        <!-- Upload Modal -->
+        <div id="uploadModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center">
+            <div class="bg-white p-6 rounded-lg w-96">
+                <h3 class="text-lg font-bold mb-4">Upload Details</h3>
+                <div class="mb-4">
+                    <label class="block text-gray-700 text-sm font-bold mb-2">Subject Name</label>
+                    <input type="text" id="uploadSubject" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500" required>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-gray-700 text-sm font-bold mb-2">Date</label>
+                    <input type="date" id="uploadDate" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500" required>
+                </div>
+                <div class="flex gap-4">
+                    <button onclick="cancelUpload()" class="flex-1 bg-gray-300 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-400">Cancel</button>
+                    <button onclick="confirmUpload()" class="flex-1 bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700">Upload</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Fullscreen Modal -->
+        <div id="fullscreenModal" class="fullscreen-modal">
+            <div class="fullscreen-content">
+                <img id="fullscreenImage" src="" alt="" style="max-width: 100%; max-height: 100%; transform-origin: center;">
+                <div class="zoom-controls">
+                    <button onclick="zoomOut()" class="bg-white bg-opacity-20 text-white p-2 rounded-full hover:bg-opacity-30">
+                        <i class="fas fa-minus"></i>
+                    </button>
+                    <button onclick="resetZoom()" class="bg-white bg-opacity-20 text-white p-2 rounded-full hover:bg-opacity-30">
+                        <i class="fas fa-expand-arrows-alt"></i>
+                    </button>
+                    <button onclick="zoomIn()" class="bg-white bg-opacity-20 text-white p-2 rounded-full hover:bg-opacity-30">
+                        <i class="fas fa-plus"></i>
+                    </button>
+                    <button onclick="closeFullscreen()" class="bg-white bg-opacity-20 text-white p-2 rounded-full hover:bg-opacity-30">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global variables
+        let currentUser = null;
+        let notes = [];
+        let tasks = [];
+        let pendingFiles = [];
+        let currentZoom = 1;
+        let currentBookIndex = 0;
+        let bookViewNotes = [];
+
+        // Initialize app
+        document.addEventListener('DOMContentLoaded', function() {
+            loadUserData();
+            setupEventListeners();
+            
+            // Set today's date as default
+            document.getElementById('uploadDate').value = new Date().toISOString().split('T')[0];
+        });
+
+        function setupEventListeners() {
+            // File drag and drop
+            const uploadArea = document.querySelector('.upload-area');
+            
+            uploadArea.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                uploadArea.classList.add('dragover');
+            });
+            
+            uploadArea.addEventListener('dragleave', () => {
+                uploadArea.classList.remove('dragover');
+            });
+            
+            uploadArea.addEventListener('drop', (e) => {
+                e.preventDefault();
+                uploadArea.classList.remove('dragover');
+                handleFileUpload(e);
+            });
+
+            // Search functionality
+            document.getElementById('searchInput').addEventListener('input', function(e) {
+                searchNotes(e.target.value);
+            });
+
+            // Keyboard shortcuts
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape') {
+                    closeFullscreen();
+                }
+            });
+        }
+
+        // Authentication functions
+        function handleLogin(event) {
+            event.preventDefault();
+            const email = document.getElementById('loginEmail').value;
+            const password = document.getElementById('loginPassword').value;
+            
+            // Simple demo authentication
+            if (email && password) {
+                currentUser = {
+                    email: email,
+                    name: email.split('@')[0],
+                    loginDate: new Date().toISOString()
+                };
+                
+                localStorage.setItem('currentUser', JSON.stringify(currentUser));
+                showMainApp();
+            } else {
+                alert('Please enter valid credentials');
+            }
+        }
+
+        function handleSignup(event) {
+            event.preventDefault();
+            const name = document.getElementById('signupName').value;
+            const email = document.getElementById('signupEmail').value;
+            const password = document.getElementById('signupPassword').value;
+            
+            if (name && email && password) {
+                currentUser = {
+                    email: email,
+                    name: name,
+                    loginDate: new Date().toISOString()
+                };
+                
+                localStorage.setItem('currentUser', JSON.stringify(currentUser));
+                showMainApp();
+            } else {
+                alert('Please fill all fields');
+            }
+        }
+
+        function showLogin() {
+            document.getElementById('loginForm').classList.remove('hidden');
+            document.getElementById('signupForm').classList.add('hidden');
+        }
+
+        function showSignup() {
+            document.getElementById('loginForm').classList.add('hidden');
+            document.getElementById('signupForm').classList.remove('hidden');
+        }
+
+        function logout() {
+            localStorage.removeItem('currentUser');
+            localStorage.removeItem('notes');
+            localStorage.removeItem('tasks');
+            currentUser = null;
+            notes = [];
+            tasks = [];
+            document.getElementById('mainApp').classList.add('hidden');
+            document.getElementById('loginScreen').classList.remove('hidden');
+        }
+
+        function showMainApp() {
+            document.getElementById('loginScreen').classList.add('hidden');
+            document.getElementById('mainApp').classList.remove('hidden');
+            loadUserData();
+            updateStats();
+        }
+
+        function loadUserData() {
+            const savedUser = localStorage.getItem('currentUser');
+            if (savedUser) {
+                currentUser = JSON.parse(savedUser);
+                notes = JSON.parse(localStorage.getItem('notes')) || [];
+                tasks = JSON.parse(localStorage.getItem('tasks')) || [];
+                showMainApp();
+            }
+        }
+
+        // File upload functions
+        function handleFileUpload(event) {
+            const files = event.target?.files || event.dataTransfer?.files;
+            if (files && files.length > 0) {
+                pendingFiles = Array.from(files);
+                document.getElementById('uploadModal').classList.remove('hidden');
+            }
+        }
+
+        function cancelUpload() {
+            document.getElementById('uploadModal').classList.add('hidden');
+            pendingFiles = [];
+            document.getElementById('fileInput').value = '';
+        }
+
+        function confirmUpload() {
+            const subject = document.getElementById('uploadSubject').value;
+            const date = document.getElementById('uploadDate').value;
+            
+            if (!subject || !date) {
+                alert('Please fill all fields');
+                return;
+            }
+
+            pendingFiles.forEach(file => {
+                const note = {
+                    id: Date.now() + Math.random(),
+                    name: file.name,
+                    subject: subject,
+                    date: date,
+                    type: file.type,
+                    size: file.size,
+                    url: URL.createObjectURL(file),
+                    createdAt: new Date().toISOString()
+                };
+                notes.push(note);
+            });
+
+            localStorage.setItem('notes', JSON.stringify(notes));
+            updateStats();
+            updateNotesDisplay();
+            updateGalleryDisplay();
+            updateSubjectSelect();
+            
+            document.getElementById('uploadModal').classList.add('hidden');
+            pendingFiles = [];
+            document.getElementById('fileInput').value = '';
+            document.getElementById('uploadSubject').value = '';
+            
+            alert('Files uploaded successfully!');
+        }
+
+        // Navigation functions
+        function showSection(section) {
+            // Hide all sections
+            document.querySelectorAll('[id$="Section"]').forEach(el => el.classList.add('hidden'));
+            
+            // Show selected section
+            document.getElementById(section + 'Section').classList.remove('hidden');
+            
+            // Update navigation
+            document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
+            event.target.closest('.nav-item').classList.add('active');
+            
+            // Load section data
+            switch(section) {
+                case 'notes':
+                    updateNotesDisplay();
+                    break;
+                case 'gallery':
+                    updateGalleryDisplay();
+                    break;
+                case 'bookView':
+                    updateSubjectSelect();
+                    break;
+                case 'tasks':
+                    updateTasksDisplay();
+                    break;
+            }
+        }
+
+        // Stats functions
+        function updateStats() {
+            const subjects = [...new Set(notes.map(note => note.subject))];
+            document.getElementById('totalNotesCount').textContent = notes.length;
+            document.getElementById('totalSubjectsCount').textContent = subjects.length;
+            
+            // Calculate days active
+            if (currentUser) {
+                const loginDate = new Date(currentUser.loginDate);
+                const today = new Date();
+                const diffTime = Math.abs(today - loginDate);
+                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                document.getElementById('daysActive').textContent = diffDays;
+            }
+        }
+
+        // Notes display functions
+        function updateNotesDisplay() {
+            const notesGrid = document.getElementById('notesGrid');
+            const subjectFilter = document.querySelector('.subject-filter');
+            
+            // Update subject filters
+            const subjects = [...new Set(notes.map(note => note.subject))];
+            subjectFilter.innerHTML = '<button class="filter-btn active" onclick="filterNotes(\'all\')">All</button>';
+            subjects.forEach(subject => {
+                subjectFilter.innerHTML += `<button class="filter-btn" onclick="filterNotes('${subject}')">${subject}</button>`;
+            });
+            
+            // Display notes
+            notesGrid.innerHTML = '';
+            notes.forEach(note => {
+                const noteCard = createNoteCard(note);
+                notesGrid.appendChild(noteCard);
+            });
+        }
+
+        function createNoteCard(note) {
+            const div = document.createElement('div');
+            div.className = 'card p-4';
+            
+            const isImage = note.type.startsWith('image/');
+            
+            div.innerHTML = `
+                <div class="mb-4">
+                    ${isImage ? 
+                        `<img src="${note.url}" alt="${note.name}" class="note-thumbnail" onclick="openFullscreen('${note.url}')">` :
+                        `<div class="note-thumbnail bg-gray-200 flex items-center justify-center">
+                            <i class="fas fa-file-alt text-4xl text-gray-400"></i>
+                        </div>`
+                    }
+                </div>
+                <h3 class="font-bold text-sm mb-2">${note.name}</h3>
+                <p class="text-sm text-blue-600 mb-1">📚 ${note.subject}</p>
+                <p class="text-sm text-gray-500">📅 ${new Date(note.date).toLocaleDateString()}</p>
+            `;
+            
+            return div;
+        }
+
+        function filterNotes(subject) {
+            // Update filter buttons
+            document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            
+            // Filter notes
+            const notesGrid = document.getElementById('notesGrid');
+            const filteredNotes = subject === 'all' ? notes : notes.filter(note => note.subject === subject);
+            
+            notesGrid.innerHTML = '';
+            filteredNotes.forEach(note => {
+                const noteCard = createNoteCard(note);
+                notesGrid.appendChild(noteCard);
+            });
+        }
+
+        function searchNotes(query) {
+            if (!query) {
+                updateNotesDisplay();
+                return;
+            }
+            
+            const filteredNotes = notes.filter(note => 
+                note.name.toLowerCase().includes(query.toLowerCase()) ||
+                note.subject.toLowerCase().includes(query.toLowerCase())
+            );
+            
+            const notesGrid = document.getElementById('notesGrid');
+            notesGrid.innerHTML = '';
+            filteredNotes.forEach(note => {
+                const noteCard = createNoteCard(note);
+                notesGrid.appendChild(noteCard);
+            });
+        }
+
+        // Gallery functions
+        function updateGalleryDisplay() {
+            const galleryGrid = document.getElementById('galleryGrid');
+            const imageNotes = notes.filter(note => note.type.startsWith('image/'));
+            
+            galleryGrid.innerHTML = '';
+            imageNotes.forEach(note => {
+                const div = document.createElement('div');
+                div.className = 'relative group';
+                div.innerHTML = `
+                    <img src="${note.url}" alt="${note.name}" class="note-thumbnail" onclick="openFullscreen('${note.url}')">
+                    <div class="absolute bottom-0 left-0 right-0 bg-black bg-opacity-75 text-white p-2 text-sm opacity-0 group-hover:opacity-100 transition-opacity">
+                        <p class="font-bold">${note.subject}</p>
+                        <p>${new Date(note.date).toLocaleDateString()}</p>
+                    </div>
+                `;
+                galleryGrid.appendChild(div);
+            });
+        }
+
+        // Book view functions
+        function updateSubjectSelect() {
+            const subjectSelect = document.getElementById('subjectSelect');
+            const subjects = [...new Set(notes.map(note => note.subject))];
+            
+            subjectSelect.innerHTML = '<option value="">Select Subject</option>';
+            subjects.forEach(subject => {
+                subjectSelect.innerHTML += `<option value="${subject}">${subject}</option>`;
+            });
+        }
+
+        function loadBookView() {
+            const selectedSubject = document.getElementById('subjectSelect').value;
+            const container = document.getElementById('bookViewContainer');
+            
+            if (!selectedSubject) {
+                container.innerHTML = '<p class="text-gray-600">Select a subject to view notes in book format</p>';
+                return;
+            }
+            
+            bookViewNotes = notes.filter(note => 
+                note.subject === selectedSubject && note.type.startsWith('image/')
+            );
+            
+            if (bookViewNotes.length === 0) {
+                container.innerHTML = '<p class="text-gray-600">No images found for this subject</p>';
+                return;
+            }
+            
+            currentBookIndex = 0;
+            displayBookPage();
+        }
+
+        function displayBookPage() {
+            const container = document.getElementById('bookViewContainer');
+            const note = bookViewNotes[currentBookIndex];
+            
+            container.innerHTML = `
+                <div class="max-w-4xl mx-auto">
+                    <div class="mb-4 text-center">
+                        <p class="text-lg font-bold">${note.subject}</p>
+                        <p class="text-gray-600">${new Date(note.date).toLocaleDateString()}</p>
+                        <p class="text-sm text-gray-500">Page ${currentBookIndex + 1} of ${bookViewNotes.length}</p>
+                    </div>
+                    <div class="zoom-container bg-white shadow-lg rounded-lg p-4 mb-4">
+                        <img src="${note.url}" alt="${note.name}" class="zoom-image mx-auto cursor-pointer" onclick="openFullscreen('${note.url}')">
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <button onclick="previousPage()" ${currentBookIndex === 0 ? 'disabled' : ''} 
+                                class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:bg-gray-300">
+                            <i class="fas fa-chevron-left mr-2"></i>Previous
+                        </button>
+                        <div class="space-x-2">
+                            <button onclick="zoomOut()" class="bg-gray-200 text-gray-700 px-3 py-2 rounded-lg hover:bg-gray-300">
+                                <i class="fas fa-minus"></i>
+                            </button>
+                            <button onclick="resetZoom()" class="bg-gray-200 text-gray-700 px-3 py-2 rounded-lg hover:bg-gray-300">
+                                <i class="fas fa-expand-arrows-alt"></i>
+                            </button>
+                            <button onclick="zoomIn()" class="bg-gray-200 text-gray-700 px-3 py-2 rounded-lg hover:bg-gray-300">
+                                <i class="fas fa-plus"></i>
+                            </button>
+                        </div>
+                        <button onclick="nextPage()" ${currentBookIndex === bookViewNotes.length - 1 ? 'disabled' : ''} 
+                                class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:bg-gray-300">
+                            Next<i class="fas fa-chevron-right ml-2"></i>
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+
+        function previousPage() {
+            if (currentBookIndex > 0) {
+                currentBookIndex--;
+                currentZoom = 1;
+                displayBookPage();
+            }
+        }
+
+        function nextPage() {
+            if (currentBookIndex < bookViewNotes.length - 1) {
+                currentBookIndex++;
+                currentZoom = 1;
+                displayBookPage();
+            }
+        }
+
+        // Zoom functions
+        function openFullscreen(imageSrc) {
+            document.getElementById('fullscreenImage').src = imageSrc;
+            document.getElementById('fullscreenModal').style.display = 'flex';
+            currentZoom = 1;
+            updateZoom();
+        }
+
+        function closeFullscreen() {
+            document.getElementById('fullscreenModal').style.display = 'none';
+            currentZoom = 1;
+        }
+
+        function zoomIn() {
+            currentZoom *= 1.2;
+            updateZoom();
+        }
+
+        function zoomOut() {
+            if (currentZoom > 0.5) {
+                currentZoom /= 1.2;
+                updateZoom();
+            }
+        }
+
+        function resetZoom() {
+            currentZoom = 1;
+            updateZoom();
+        }
+
+        function updateZoom() {
+            const images = document.querySelectorAll('.zoom-image, #fullscreenImage');
+            images.forEach(img => {
+                img.style.transform = `scale(${currentZoom})`;
+            });
+        }
+
+        // Task management functions
+        function addTask() {
+            const taskInput = document.getElementById('taskInput');
+            const taskText = taskInput.value.trim();
+            
+            if (!taskText) return;
+            
+            const task = {
+                id: Date.now(),
+                text: taskText,
+                completed: false,
+                createdAt: new Date().toISOString()
+            };
+            
+            tasks.push(task);
+            localStorage.setItem('tasks', JSON.stringify(tasks));
+            taskInput.value = '';
+            updateTasksDisplay();
+        }
+
+        function updateTasksDisplay() {
+            const tasksList = document.getElementById('tasksList');
+            tasksList.innerHTML = '';
+            
+            tasks.forEach(task => {
+                const div = document.createElement('div');
+                div.className = 'card p-4 flex items-center justify-between';
+                div.innerHTML = `
+                    <div class="flex items-center">
+                        <input type="checkbox" ${task.completed ? 'checked' : ''} 
+                               onchange="toggleTask(${task.id})" class="mr-3">
+                        <span class="${task.completed ? 'line-through text-gray-500' : ''}">${task.text}</span>
+                    </div>
+                    <button onclick="deleteTask(${task.id})" class="text-red-500 hover:text-red-700">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                `;
+                tasksList.appendChild(div);
+            });
+        }
+
+        function toggleTask(taskId) {
+            const task = tasks.find(t => t.id === taskId);
+            if (task) {
+                task.completed = !task.completed;
+                localStorage.setItem('tasks', JSON.stringify(tasks));
+                updateTasksDisplay();
+            }
+        }
+
+        function deleteTask(taskId) {
+            tasks = tasks.filter(t => t.id !== taskId);
+            localStorage.setItem('tasks', JSON.stringify(tasks));
+            updateTasksDisplay();
+        }
+
+        // Add Enter key support for task input
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && e.target.id === 'taskInput') {
+                addTask();
+            }
+        });
+    </script>
+</body>
+</html>
